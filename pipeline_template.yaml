@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Template
+labels:
+  template: pipeline_template
+  group: cicd
+metadata:
+  annotations:
+    iconClass: icon-jenkins
+    tags: pipeline_template
+  name: pipeline_template
+message: "pipeline template "
+parameters:
+- displayName: project name
+  value: dev-opentlc
+  name: PROJECT
+  required: true
+objects:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    name: demo-pipeline
+  spec:
+    strategy:
+      jenkinsPipelineStrategy:
+        env:
+        - name: PROJECT
+          value: ${PROJECT}
+        jenkinsfile: |-
+          pipeline {
+            agent any
+            stages {
+              stage('Build') {
+                steps {
+                  script {
+                    openshift.withCluster() {
+                        openshift.withProject(env.PROJECT) {
+                               echo "Using project ${openshift.project()} in cluster with url ${openshift.cluster()}"
+                              if (openshift.selector('bc', 'demo').exists()) {
+                                  //openshift.selector('bc', 'demo').delete()
+                                  sh "oc start-build demo -n ${env.PROJECT}"
+                                  openshift.startBuild("demo").logs('-f')
+                              } else {
+                                  sh "oc new-build https://github.com/wael2000/a-ver.git --name=demo -l app=demo -n ${env.PROJECT}"
+                              }
+                        }
+                    }
+                  }
+                }
+              }
+              stage('Deploy') {
+                steps {
+                  script {
+                    openshift.withCluster() {
+                          openshift.withProject(env.PROJECT) {
+                          if (openshift.selector('dc', 'demo').exists()) {
+                              openshift.selector('dc', 'demo').delete()
+                          }
+                          if (openshift.selector('svc', 'demo').exists()) {
+                              openshift.selector('svc', 'demo').delete()
+                          }
+                          if (openshift.selector('route', 'demo').exists()) {
+                              openshift.selector('route', 'demo').delete()
+                          }
+                          sh "oc new-app ${env.PROJECT}/demo:latest -n ${env.PROJECT}"
+                          sh "oc expose svc demo -n ${env.PROJECT}"
+                        }
+                      }
+                    }
+                  }
+                }
+            }
+          }
+      type: JenkinsPipeline

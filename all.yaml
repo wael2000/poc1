@@ -1,0 +1,729 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      description: Defines how to build the application
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+    name: cakephp-mysql-persistent
+  spec:
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: cakephp-mysql-persistent:latest
+    postCommit:
+      script: ./lib/Cake/Console/cake test app AllTests
+    resources: {}
+    runPolicy: Serial
+    source:
+      git:
+        uri: https://github.com/openshift/cakephp-ex.git
+      type: Git
+    strategy:
+      sourceStrategy:
+        env:
+        - name: COMPOSER_MIRROR
+        from:
+          kind: ImageStreamTag
+          name: php:7.0
+          namespace: openshift
+      type: Source
+    triggers:
+    - imageChange: {}
+      type: ImageChange
+    - type: ConfigChange
+    - github:
+        secret: jyDqsEpmhFP618YoreQMt38MEx8MPAx0PpDmHIeH
+      type: GitHub
+  status:
+    lastVersion: 0
+- apiVersion: v1
+  kind: Build
+  metadata:
+    annotations:
+      openshift.io/build-config.name: cakephp-mysql-persistent
+      openshift.io/build.number: "1"
+      openshift.io/build.pod-name: cakephp-mysql-persistent-1-build
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      buildconfig: cakephp-mysql-persistent
+      openshift.io/build-config.name: cakephp-mysql-persistent
+      openshift.io/build.start-policy: Serial
+      template: cakephp-mysql-persistent
+    name: cakephp-mysql-persistent-1
+    ownerReferences:
+    - apiVersion: build.openshift.io/v1
+      controller: true
+      kind: BuildConfig
+      name: cakephp-mysql-persistent
+      uid: 0315ee1b-4e11-11e8-b53b-927aecb8e8cb
+  spec:
+    nodeSelector: null
+    output:
+      pushSecret:
+        name: builder-dockercfg-hw3vn
+      to:
+        kind: ImageStreamTag
+        name: cakephp-mysql-persistent:latest
+    postCommit:
+      script: ./lib/Cake/Console/cake test app AllTests
+    resources: {}
+    revision:
+      git:
+        author:
+          email: bparees@users.noreply.github.com
+          name: Ben Parees
+        commit: 53d2216b61d3296dfb545aa9a99bbab9b4cf84c0
+        committer:
+          email: noreply@github.com
+          name: GitHub
+        message: 'Merge pull request #97 from cuppett/dev/cuppett/cakephp-no-mysql'
+      type: Git
+    serviceAccount: builder
+    source:
+      git:
+        uri: https://github.com/openshift/cakephp-ex.git
+      type: Git
+    strategy:
+      sourceStrategy:
+        env:
+        - name: COMPOSER_MIRROR
+        from:
+          kind: DockerImage
+          name: centos/php-70-centos7@sha256:dd3265b6ef5d5a50cd27cf0305930ed87e6fd7ab45d7304c50a1feed5795c3fc
+      type: Source
+    triggeredBy:
+    - imageChangeBuild:
+        fromRef:
+          kind: ImageStreamTag
+          name: php:7.0
+          namespace: openshift
+        imageID: centos/php-70-centos7@sha256:dd3265b6ef5d5a50cd27cf0305930ed87e6fd7ab45d7304c50a1feed5795c3fc
+      message: Image change
+  status:
+    config:
+      name: cakephp-mysql-persistent
+    output: {}
+    outputDockerImageReference: 172.30.1.1:5000/test/cakephp-mysql-persistent:latest
+    phase: New
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      description: Keeps track of changes in the application image
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+    name: cakephp-mysql-persistent
+  spec:
+    lookupPolicy:
+      local: false
+  status:
+    dockerImageRepository: ""
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Defines how to deploy the application server
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+    name: cakephp-mysql-persistent
+  spec:
+    replicas: 1
+    selector:
+      name: cakephp-mysql-persistent
+    strategy:
+      activeDeadlineSeconds: 21600
+      recreateParams:
+        pre:
+          execNewPod:
+            command:
+            - ./migrate-database.sh
+            containerName: cakephp-mysql-persistent
+          failurePolicy: Retry
+        timeoutSeconds: 600
+      resources: {}
+      type: Recreate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          name: cakephp-mysql-persistent
+        name: cakephp-mysql-persistent
+      spec:
+        containers:
+        - env:
+          - name: DATABASE_SERVICE_NAME
+            value: mysql
+          - name: DATABASE_ENGINE
+            value: mysql
+          - name: DATABASE_NAME
+            value: default
+          - name: DATABASE_USER
+            valueFrom:
+              secretKeyRef:
+                key: database-user
+                name: cakephp-mysql-persistent
+          - name: DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-password
+                name: cakephp-mysql-persistent
+          - name: CAKEPHP_SECRET_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: cakephp-secret-token
+                name: cakephp-mysql-persistent
+          - name: CAKEPHP_SECURITY_SALT
+            valueFrom:
+              secretKeyRef:
+                key: cakephp-security-salt
+                name: cakephp-mysql-persistent
+          - name: CAKEPHP_SECURITY_CIPHER_SEED
+            valueFrom:
+              secretKeyRef:
+                key: cakephp-security-cipher-seed
+                name: cakephp-mysql-persistent
+          - name: OPCACHE_REVALIDATE_FREQ
+            value: "2"
+          image: ' '
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          name: cakephp-mysql-persistent
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health.php
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - cakephp-mysql-persistent
+        from:
+          kind: ImageStreamTag
+          name: cakephp-mysql-persistent:latest
+          namespace: test
+      type: ImageChange
+    - type: ConfigChange
+  status:
+    availableReplicas: 0
+    latestVersion: 0
+    observedGeneration: 0
+    replicas: 0
+    unavailableReplicas: 0
+    updatedReplicas: 0
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Defines how to deploy the database
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+    name: mysql
+  spec:
+    replicas: 1
+    selector:
+      name: mysql
+    strategy:
+      activeDeadlineSeconds: 21600
+      recreateParams:
+        timeoutSeconds: 600
+      resources: {}
+      type: Recreate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          name: mysql
+        name: mysql
+      spec:
+        containers:
+        - env:
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                key: database-user
+                name: cakephp-mysql-persistent
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-password
+                name: cakephp-mysql-persistent
+          - name: MYSQL_DATABASE
+            value: default
+          image: centos/mysql-57-centos7@sha256:3f24710006214895feebaab179cf8e8dc832f437583648153c89ab964e892149
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 3306
+            timeoutSeconds: 1
+          name: mysql
+          ports:
+          - containerPort: 3306
+            protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -i
+              - -c
+              - MYSQL_PWD='L3Y8rS3c3C5RIdIG' mysql -h 127.0.0.1 -u cakephp -D default
+                -e 'SELECT 1'
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/lib/mysql/data
+            name: mysql-data
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - mysql
+        from:
+          kind: ImageStreamTag
+          name: mysql:5.7
+          namespace: openshift
+      type: ImageChange
+    - type: ConfigChange
+  status:
+    availableReplicas: 0
+    latestVersion: 0
+    observedGeneration: 0
+    replicas: 0
+    unavailableReplicas: 0
+    updatedReplicas: 0
+- apiVersion: v1
+  kind: ReplicationController
+  metadata:
+    annotations:
+      openshift.io/deployer-pod.name: mysql-1-deploy
+      openshift.io/deployment-config.latest-version: "1"
+      openshift.io/deployment-config.name: mysql
+      openshift.io/deployment.phase: Complete
+      openshift.io/deployment.replicas: "1"
+      openshift.io/deployment.status-reason: image change
+      openshift.io/encoded-deployment-config: |
+        {"kind":"DeploymentConfig","apiVersion":"v1","metadata":{"name":"mysql","namespace":"test","selfLink":"/apis/apps.openshift.io/v1/namespaces/test/deploymentconfigs/mysql","uid":"0311b527-4e11-11e8-b53b-927aecb8e8cb","resourceVersion":"16574","generation":2,"creationTimestamp":"2018-05-02T13:59:20Z","labels":{"app":"cakephp-mysql-persistent","template":"cakephp-mysql-persistent"},"annotations":{"description":"Defines how to deploy the database"}},"spec":{"strategy":{"type":"Recreate","recreateParams":{"timeoutSeconds":600},"resources":{},"activeDeadlineSeconds":21600},"triggers":[{"type":"ImageChange","imageChangeParams":{"automatic":true,"containerNames":["mysql"],"from":{"kind":"ImageStreamTag","namespace":"openshift","name":"mysql:5.7"},"lastTriggeredImage":"centos/mysql-57-centos7@sha256:3f24710006214895feebaab179cf8e8dc832f437583648153c89ab964e892149"}},{"type":"ConfigChange"}],"replicas":1,"test":false,"selector":{"name":"mysql"},"template":{"metadata":{"name":"mysql","creationTimestamp":null,"labels":{"name":"mysql"}},"spec":{"volumes":[{"name":"mysql-data","persistentVolumeClaim":{"claimName":"mysql"}}],"containers":[{"name":"mysql","image":"centos/mysql-57-centos7@sha256:3f24710006214895feebaab179cf8e8dc832f437583648153c89ab964e892149","ports":[{"containerPort":3306,"protocol":"TCP"}],"env":[{"name":"MYSQL_USER","valueFrom":{"secretKeyRef":{"name":"cakephp-mysql-persistent","key":"database-user"}}},{"name":"MYSQL_PASSWORD","valueFrom":{"secretKeyRef":{"name":"cakephp-mysql-persistent","key":"database-password"}}},{"name":"MYSQL_DATABASE","value":"default"}],"resources":{"limits":{"memory":"512Mi"}},"volumeMounts":[{"name":"mysql-data","mountPath":"/var/lib/mysql/data"}],"livenessProbe":{"tcpSocket":{"port":3306},"initialDelaySeconds":30,"timeoutSeconds":1,"periodSeconds":10,"successThreshold":1,"failureThreshold":3},"readinessProbe":{"exec":{"command":["/bin/sh","-i","-c","MYSQL_PWD='L3Y8rS3c3C5RIdIG' mysql -h 127.0.0.1 -u cakephp -D default -e 'SELECT 1'"]},"initialDelaySeconds":5,"timeoutSeconds":1,"periodSeconds":10,"successThreshold":1,"failureThreshold":3},"terminationMessagePath":"/dev/termination-log","terminationMessagePolicy":"File","imagePullPolicy":"IfNotPresent"}],"restartPolicy":"Always","terminationGracePeriodSeconds":30,"dnsPolicy":"ClusterFirst","securityContext":{},"schedulerName":"default-scheduler"}}},"status":{"latestVersion":1,"observedGeneration":1,"replicas":0,"updatedReplicas":0,"availableReplicas":0,"unavailableReplicas":0,"details":{"message":"image change","causes":[{"type":"ImageChange","imageTrigger":{"from":{"kind":"ImageStreamTag","namespace":"openshift","name":"mysql:5.7"}}}]},"conditions":[{"type":"Available","status":"False","lastUpdateTime":"2018-05-02T13:59:20Z","lastTransitionTime":"2018-05-02T13:59:20Z","message":"Deployment config does not have minimum availability."}]}}
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: cakephp-mysql-persistent
+      openshift.io/deployment-config.name: mysql
+      template: cakephp-mysql-persistent
+    name: mysql-1
+    ownerReferences:
+    - apiVersion: apps.openshift.io/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: DeploymentConfig
+      name: mysql
+      uid: 0311b527-4e11-11e8-b53b-927aecb8e8cb
+  spec:
+    replicas: 1
+    selector:
+      deployment: mysql-1
+      deploymentconfig: mysql
+      name: mysql
+    template:
+      metadata:
+        annotations:
+          openshift.io/deployment-config.latest-version: "1"
+          openshift.io/deployment-config.name: mysql
+          openshift.io/deployment.name: mysql-1
+        creationTimestamp: null
+        labels:
+          deployment: mysql-1
+          deploymentconfig: mysql
+          name: mysql
+      spec:
+        containers:
+        - env:
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                key: database-user
+                name: cakephp-mysql-persistent
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-password
+                name: cakephp-mysql-persistent
+          - name: MYSQL_DATABASE
+            value: default
+          image: centos/mysql-57-centos7@sha256:3f24710006214895feebaab179cf8e8dc832f437583648153c89ab964e892149
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 3306
+            timeoutSeconds: 1
+          name: mysql
+          ports:
+          - containerPort: 3306
+            protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -i
+              - -c
+              - MYSQL_PWD='L3Y8rS3c3C5RIdIG' mysql -h 127.0.0.1 -u cakephp -D default
+                -e 'SELECT 1'
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/lib/mysql/data
+            name: mysql-data
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql
+  status:
+    replicas: 0
+- apiVersion: v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/host.generated: "true"
+      template.openshift.io/expose-uri: http://{.spec.host}{.spec.path}
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+    name: cakephp-mysql-persistent
+  spec:
+    host: cakephp-mysql-persistent-test.192.168.99.100.nip.io
+    to:
+      kind: Service
+      name: cakephp-mysql-persistent
+      weight: 100
+    wildcardPolicy: None
+  status:
+    ingress:
+    - conditions:
+      - lastTransitionTime: 2018-05-02T13:59:20Z
+        status: "True"
+        type: Admitted
+      host: cakephp-mysql-persistent-test.192.168.99.100.nip.io
+      routerName: router
+      wildcardPolicy: None
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes and load balances the application pods
+      service.alpha.openshift.io/dependencies: '[{"name": "mysql", "kind": "Service"}]'
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+    name: cakephp-mysql-persistent
+  spec:
+    ports:
+    - name: web
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      name: cakephp-mysql-persistent
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes the database server
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+    name: mysql
+  spec:
+    ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+    selector:
+      name: mysql
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      openshift.io/build.name: cakephp-mysql-persistent-1
+      openshift.io/scc: privileged
+    creationTimestamp: null
+    labels:
+      openshift.io/build.name: cakephp-mysql-persistent-1
+    name: cakephp-mysql-persistent-1-build
+    ownerReferences:
+    - apiVersion: build.openshift.io/v1
+      controller: true
+      kind: Build
+      name: cakephp-mysql-persistent-1
+      uid: 0336db2d-4e11-11e8-b53b-927aecb8e8cb
+  spec:
+    containers:
+    - args:
+      - --loglevel=0
+      env:
+      - name: BUILD
+        value: |
+          {"kind":"Build","apiVersion":"v1","metadata":{"name":"cakephp-mysql-persistent-1","namespace":"test","selfLink":"/apis/build.openshift.io/v1/namespaces/test/builds/cakephp-mysql-persistent-1","uid":"0336db2d-4e11-11e8-b53b-927aecb8e8cb","resourceVersion":"16575","creationTimestamp":"2018-05-02T13:59:21Z","labels":{"app":"cakephp-mysql-persistent","buildconfig":"cakephp-mysql-persistent","openshift.io/build-config.name":"cakephp-mysql-persistent","openshift.io/build.start-policy":"Serial","template":"cakephp-mysql-persistent"},"annotations":{"openshift.io/build-config.name":"cakephp-mysql-persistent","openshift.io/build.number":"1"},"ownerReferences":[{"apiVersion":"build.openshift.io/v1","kind":"BuildConfig","name":"cakephp-mysql-persistent","uid":"0315ee1b-4e11-11e8-b53b-927aecb8e8cb","controller":true}]},"spec":{"serviceAccount":"builder","source":{"type":"Git","git":{"uri":"https://github.com/openshift/cakephp-ex.git"}},"strategy":{"type":"Source","sourceStrategy":{"from":{"kind":"DockerImage","name":"centos/php-70-centos7@sha256:dd3265b6ef5d5a50cd27cf0305930ed87e6fd7ab45d7304c50a1feed5795c3fc"},"env":[{"name":"COMPOSER_MIRROR"}]}},"output":{"to":{"kind":"DockerImage","name":"172.30.1.1:5000/test/cakephp-mysql-persistent:latest"},"pushSecret":{"name":"builder-dockercfg-hw3vn"}},"resources":{},"postCommit":{"script":"./lib/Cake/Console/cake test app AllTests"},"nodeSelector":null,"triggeredBy":[{"message":"Image change","imageChangeBuild":{"imageID":"centos/php-70-centos7@sha256:dd3265b6ef5d5a50cd27cf0305930ed87e6fd7ab45d7304c50a1feed5795c3fc","fromRef":{"kind":"ImageStreamTag","namespace":"openshift","name":"php:7.0"}}}]},"status":{"phase":"New","outputDockerImageReference":"172.30.1.1:5000/test/cakephp-mysql-persistent:latest","config":{"kind":"BuildConfig","namespace":"test","name":"cakephp-mysql-persistent"},"output":{}}}
+      - name: SOURCE_REPOSITORY
+        value: https://github.com/openshift/cakephp-ex.git
+      - name: SOURCE_URI
+        value: https://github.com/openshift/cakephp-ex.git
+      - name: ORIGIN_VERSION
+        value: v3.6.0+c4dd4cf
+      - name: ALLOWED_UIDS
+        value: 1-
+      - name: DROP_CAPS
+        value: KILL,MKNOD,SETGID,SETUID,SYS_CHROOT
+      - name: PUSH_DOCKERCFG_PATH
+        value: /var/run/secrets/openshift.io/push
+      image: openshift/origin-sti-builder:v3.6.0
+      imagePullPolicy: IfNotPresent
+      name: sti-build
+      resources: {}
+      securityContext:
+        privileged: true
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: FallbackToLogsOnError
+      volumeMounts:
+      - mountPath: /var/run/docker.sock
+        name: docker-socket
+      - mountPath: /var/run/secrets/openshift.io/push
+        name: builder-dockercfg-hw3vn-push
+        readOnly: true
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: builder-token-5h0hx
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    imagePullSecrets:
+    - name: builder-dockercfg-hw3vn
+    nodeName: localhost
+    restartPolicy: Never
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: builder
+    serviceAccountName: builder
+    terminationGracePeriodSeconds: 30
+    volumes:
+    - hostPath:
+        path: /var/run/docker.sock
+      name: docker-socket
+    - name: builder-dockercfg-hw3vn-push
+      secret:
+        defaultMode: 420
+        secretName: builder-dockercfg-hw3vn
+    - name: builder-token-5h0hx
+      secret:
+        defaultMode: 420
+        secretName: builder-token-5h0hx
+  status:
+    phase: Pending
+    qosClass: BestEffort
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubernetes.io/created-by: |
+        {"kind":"SerializedReference","apiVersion":"v1","reference":{"kind":"ReplicationController","namespace":"test","name":"mysql-1","uid":"0337ffd7-4e11-11e8-b53b-927aecb8e8cb","apiVersion":"v1","resourceVersion":"16606"}}
+      openshift.io/deployment-config.latest-version: "1"
+      openshift.io/deployment-config.name: mysql
+      openshift.io/deployment.name: mysql-1
+      openshift.io/scc: restricted
+    creationTimestamp: null
+    generateName: mysql-1-
+    labels:
+      deployment: mysql-1
+      deploymentconfig: mysql
+      name: mysql
+    ownerReferences:
+    - apiVersion: v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicationController
+      name: mysql-1
+      uid: 0337ffd7-4e11-11e8-b53b-927aecb8e8cb
+  spec:
+    containers:
+    - env:
+      - name: MYSQL_USER
+        valueFrom:
+          secretKeyRef:
+            key: database-user
+            name: cakephp-mysql-persistent
+      - name: MYSQL_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: database-password
+            name: cakephp-mysql-persistent
+      - name: MYSQL_DATABASE
+        value: default
+      image: centos/mysql-57-centos7@sha256:3f24710006214895feebaab179cf8e8dc832f437583648153c89ab964e892149
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 3306
+        timeoutSeconds: 1
+      name: mysql
+      ports:
+      - containerPort: 3306
+        protocol: TCP
+      readinessProbe:
+        exec:
+          command:
+          - /bin/sh
+          - -i
+          - -c
+          - MYSQL_PWD='L3Y8rS3c3C5RIdIG' mysql -h 127.0.0.1 -u cakephp -D default
+            -e 'SELECT 1'
+        failureThreshold: 3
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 1
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 512Mi
+      securityContext:
+        capabilities:
+          drop:
+          - KILL
+          - MKNOD
+          - SETGID
+          - SETUID
+          - SYS_CHROOT
+        privileged: false
+        runAsUser: 1000110000
+        seLinuxOptions:
+          level: s0:c11,c0
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/lib/mysql/data
+        name: mysql-data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: default-token-7j19v
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    imagePullSecrets:
+    - name: default-dockercfg-2bvtw
+    nodeName: localhost
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext:
+      fsGroup: 1000110000
+      seLinuxOptions:
+        level: s0:c11,c0
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    volumes:
+    - name: mysql-data
+      persistentVolumeClaim:
+        claimName: mysql
+    - name: default-token-7j19v
+      secret:
+        defaultMode: 420
+        secretName: default-token-7j19v
+  status:
+    phase: Pending
+    qosClass: Burstable
+kind: List
+metadata: {}

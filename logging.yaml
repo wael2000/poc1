@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  creationTimestamp: '2018-04-02T16:45:02Z'
+  labels:
+    job-name: openshift-ansible-logging-job
+  name: openshift-ansible-logging-job
+  namespace: logging
+  resourceVersion: '1701'
+  selfLink: /apis/batch/v1/namespaces/logging/jobs/openshift-ansible-logging-job
+  uid: 307da914-3695-11e8-9856-da32b5e56657
+spec:
+  activeDeadlineSeconds: 300
+  backoffLimit: 6
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        job-name: openshift-ansible-logging-job
+    spec:
+      containers:
+        - env:
+            - name: INVENTORY_FILE
+              value: /tmp/inventory
+            - name: PLAYBOOK_FILE
+              value: playbooks/openshift-logging/config.yml
+          image: 'openshift/origin-ansible:v3.9.0'
+          imagePullPolicy: IfNotPresent
+          name: openshift-ansible-logging-job
+          resources: {}
+          securityContext:
+            runAsUser: 0
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /etc/origin/master
+              name: configdir
+            - mountPath: /tmp/inventory
+              name: inventoryfile
+      dnsPolicy: ClusterFirst
+      hostNetwork: true
+      restartPolicy: Never
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: openshift-ansible
+      serviceAccountName: openshift-ansible
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - hostPath:
+            path: /var/lib/minishift/openshift.local.config/master
+            type: ''
+          name: configdir
+        - hostPath:
+            path: /var/lib/minishift/openshift.local.config/logging.inventory
+            type: ''
+          name: inventoryfile

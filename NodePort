@@ -1,0 +1,25 @@
+1 - edit master config
+/etc/origin/master/master-config.yaml
+2 - provide NodePort Range
+servicesNodePortRange: 30000-30002
+3 - edit svc change type to NodePort and add nodePort
+
+spec:
+  clusterIP: 172.30.191.39
+  externalTrafficPolicy: Cluster
+  ports:
+    - name: mysql
+      nodePort: 30005
+      port: 3001
+      protocol: TCP
+      targetPort: 3306
+  selector:
+    name: mysql
+  sessionAffinity: None
+  type: NodePort
+status:
+  loadBalancer: {}
+
+
+4 - look at below URL
+https://access.redhat.com/solutions/3371611

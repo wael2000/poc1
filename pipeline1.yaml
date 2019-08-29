@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: demo-pipeline
+spec:
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        pipeline {
+          agent any
+          stages {
+            stage('Build') {
+              steps {
+                script {
+                  openshift.withCluster() {
+                      openshift.withProject("dev-opentlc") {
+                             echo "Using project ${openshift.project()} in cluster with url ${openshift.cluster()}"
+                            if (openshift.selector('bc', 'demo1').exists()) {
+                                //openshift.selector('bc', 'demo1').delete()
+                                sh "oc start-build demo1 -n dev-opentlc"
+                                openshift.startBuild("demo1").logs('-f')
+                            } else {
+                                sh "oc new-build https://github.com/wael2000/a-ver.git --name=demo1 -l app=demo1 -n dev-opentlc"
+                            }
+                      }
+                  }
+                }
+              }
+            }
+            stage('Deploy') {
+              steps {
+                script {
+                  openshift.withCluster() {
+                        openshift.withProject("dev-opentlc") {
+                        if (openshift.selector('dc', 'demo1').exists()) {
+                            openshift.selector('dc', 'demo1').delete()
+                        }
+                        if (openshift.selector('svc', 'demo1').exists()) {
+                            openshift.selector('svc', 'demo1').delete()
+                        }
+                        if (openshift.selector('route', 'demo1').exists()) {
+                            openshift.selector('route', 'demo1').delete()
+                        }
+                        sh "oc new-app demo1:latest -n dev-opentlc"
+                        sh "oc expose svc demo1 -n dev-opentlc"
+                      }
+                    }
+                  }
+                }
+              }
+          }
+        }
+    type: JenkinsPipeline

@@ -1,0 +1,20 @@
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  annotations:
+    autoscaling.alpha.kubernetes.io/current-metrics: '[{"type":"Resource","resource":{"name":"cpu","currentAverageUtilization":2,"currentAverageValue":"2m"}}]'
+  labels:
+    app: test
+  name: test
+spec:
+  maxReplicas: 3
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: DeploymentConfig
+    name: test
+  targetCPUUtilizationPercentage: 60
+status:
+  currentCPUUtilizationPercentage: 2
+  currentReplicas: 1
+  desiredReplicas: 1

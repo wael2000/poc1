@@ -1,0 +1,73 @@
+# create dev
+$ oc new-project dev
+
+# create an app
+$ oc new-app nodejs:10~https://github.com/openshift/nodejs-ex.git --name=sitco
+
+#expose service
+$ oc expose svc sitco
+
+# create sit
+$ oc new-project sit
+
+# grant admin
+oc policy add-role-to-user admin system:serviceaccount:sit:default -n dev
+
+# deploy one more version
+$ oc new-app dev/sitco:latest --name=sitco
+
+
+# check build c
+$ oc get bc sitco --export  -o yaml
+
+# check deploy c
+$ oc get dc another --export  -o yaml
+
+# remove image change trigger
+# Print the triggers on the registry
+$ oc set triggers dc/sitco
+
+# Set all triggers to manual
+$ oc set triggers dc/sitco --manual
+
+# start a new build
+$ oc new-build sitco -n dev
+
+
+# Enable all automatic triggers
+$ oc set triggers dc/another --auto
+
+$ oc set triggers dc/another --from-config --remove
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+05 start a new build
+$ oc start-build sitco
+
+
+
+$ oc set triggers bc <name> --from-github
+
+
+oc set triggers bc <name> --from-image='<image>'
+
+
+oc set triggers RESOURCE/NAME [--from-config|--from-image|--from-github|--from-webhook] [--auto|--manual] [flags]
+
+
+oc set triggers bc <name> --from-bitbucket --remove
